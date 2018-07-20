@@ -1,28 +1,34 @@
 #!/bin/bash
 
 set -e
+#set -o xtrace
 baseUrl=$1
+targetName=$2
 
 function getDirName() {
-    echo $1 | sed -e 's_^\(.*\)/[^/]*$_\1_g'
+    result=$(echo $1 | sed -e 's_^\(.*\)/[^/]*$_\1_g')
+    if [[ "$result" != "$1" ]]; then
+	echo $result
+    fi
 }
 function download() {
     dirName=$(getDirName $1)
     if [[ "x$dirName" != "x" ]]; then
-        mkdir -p $dirName
+        mkdir -p "${targetName}/${dirName}"
     fi
 
     # -nv: no verbose
     # -O: output file name
-    wget -nv -O "$1" "$baseUrl/$1"
+    wget -nv -O "${targetName}/$1" "$baseUrl/$1"
 }
 function getRootFilePath() {
-    xpath -q -e '//rootfile/@full-path' $1 | sed -e 's/^.*"\(.*\)".*$/\1/g'
+    xpath -q -e '//rootfile/@full-path' "${targetName}/$1" | sed -e 's/^.*"\(.*\)".*$/\1/g'
 }
 function getItemPaths() {
-    xpath -q -e '//manifest/item/@href' $1 | sed -e 's/^.*"\(.*\)".*$/\1/g'
+    xpath -q -e '//manifest/item/@href' "${targetName}/$1" | sed -e 's/^.*"\(.*\)".*$/\1/g'
 }
 
+mkdir -p "${targetName}"
 download mimetype
 download META-INF/container.xml
 
@@ -34,5 +40,5 @@ for itemPath in $(getItemPaths $rootFilePath) ; do
 	download $itemDir/$itemPath
 done
 
-zip -r output.epub ./*
+( cd "${targetName}" && zip -r "../${targetName}.epub" ./* )
 
